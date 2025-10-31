@@ -124,7 +124,7 @@ def main():
     net = DyCompete(in_features, encoded_features, out_features, risks=2)
 
 
-    loss = Loss([0.2, 0.5, 0 , 0.3]
+    loss = Loss([0.2, 0.5, 0 , 0.3, 0]
     )
 
 
@@ -132,10 +132,11 @@ def main():
 
 
     metrics = dict(
-        loss_surv = Loss(alpha=[1, 0, 0, 0]),
-        loss_ae = Loss(alpha=[0, 1, 0, 0]),
-        loss_kd = Loss(alpha=[0, 0, 1, 0]),
-        loss_competing = Loss(alpha=[0, 0, 0, 1])
+        loss_surv = Loss(alpha=[1, 0, 0, 0, 0]),
+        loss_ae = Loss(alpha=[0, 1, 0, 0, 0]),
+        loss_kd = Loss(alpha=[0, 0, 1, 0, 0]),
+        loss_competing = Loss(alpha=[0, 0, 0, 1, 0]),
+        loss_ranking = Loss(alpha=[0, 0, 0, 0, 1])
     )
     callbacks = [tt.cb.EarlyStopping()]
 

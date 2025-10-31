@@ -109,6 +109,15 @@ def nll_loss(out, events, reduction='mean'):
 
   return _reduction(loss, reduction)
 
+def ranking_loss(cif_total, t, e):
+  loss = 0
+  for k, cifk in enumerate(cif_total):
+      for ci, ti in zip(cifk[e-1 == k], t[e-1 == k]):
+          if torch.sum(t > ti - 1) > 0:
+              loss += torch.mean(torch.sigmoid((cifk[t > ti - 1][torch.arange((t > ti - 1).sum()), ti - 1] - ci[ti - 1])))
+              # selects patients that have survived longer than ti and gets their CIF
+  return loss
+
 
 class NLLLoss(_Loss):
     def forward(self, out, events) -> Tensor:
@@ -118,15 +127,6 @@ class NLLLoss(_Loss):
 class NLLLogistiHazardLoss(_Loss):
     def forward(self, phi: Tensor, idx_durations: Tensor, events: Tensor) -> Tensor:
         return nll_logistic_hazard(phi, idx_durations, events, self.reduction, self.training)
-
-def ranking_loss(cif_total, t, e):
-  loss = 0
-  for k, cifk in enumerate(cif_total):
-      for ci, ti in zip(cifk[e-1 == k], t[e-1 == k]):
-          if torch.sum(t > ti - 1) > 0:
-              loss += torch.mean(torch.sigmoid((cifk[t > ti - 1][torch.arange((t > ti - 1).sum()), ti - 1] - ci[ti - 1])))
-              # selects patients that have survived longer than ti and gets their CIF
-  return loss
 
 
 class RankingLoss(_Loss):
@@ -140,6 +140,7 @@ class Loss(nn.Module):
         self.loss_surv = NLLLogistiHazardLoss()
         self.loss_ae = nn.MSELoss()
         self.loss_competing = NLLLoss()
+        self.loss_ranking = RankingLoss()
 
     def forward(self, decoded, phi, mu, logvar, competing, target_loghaz, target_ae):
         """
@@ -148,6 +149,7 @@ class Loss(nn.Module):
                 2. AE loss: reconstruction or MSE loss
                 3. KL-divergence: KL-divergence or pushing the model to have a latent space close to a normal distribution.
                 4. Competing Risk Loss: negative log likelihood for each cause-specific estimated hazard.
+                5. Ranking Loss: pairwise ranking loss for competing risks.
         """
         # Unpack data
         idx_durations, events = target_loghaz
@@ -165,4 +167,6 @@ class Loss(nn.Module):
         #Competing risks Loss
         loss_competing = self.loss_competing(competing, events)/500
 
-        return self.alpha[0] * (loss_surv) + self.alpha[1] * loss_ae + self.alpha[2] * loss_kd + loss_competing * self.alpha[3]
+        loss_ranking = self.loss_ranking(competing[1], idx_durations, events)/10
+
+        return self.alpha[0] * (loss_surv) + self.alpha[1] * loss_ae + self.alpha[2] * loss_kd + loss_competing * self.alpha[3] + loss_ranking * self.alpha[4]

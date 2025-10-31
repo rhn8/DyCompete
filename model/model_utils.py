@@ -35,7 +35,7 @@ class TimeRescale(nn.Module):
 
 
 class CompetingRisk(nn.Module):
-    def __init__(self, latent_dim, output_dim, dropout=0):
+    def __init__(self, latent_dim, dropout=0):
         super().__init__()
         input_dim = latent_dim + 1 + 1
 
@@ -77,14 +77,13 @@ class CompetingRisks(nn.Module):
         self.risks = risks
         self.latent_dim = latent_dim
         self.output_dim = output_dim
-        self.cause_specific = nn.ModuleList([CompetingRisk(latent_dim,
-                                                            output_dim)
+        self.cause_specific = nn.ModuleList([CompetingRisk(latent_dim, dropout=0)
                                               for risk in range(self.risks)])        
 
     def forward(self, z, t_eval):
-      initial = torch.zeros(z.shape[0], 1, device=z.device)
+      initial = torch.zeros(z.shape[0],1, device=z.device)
 
-      t_points = Tensor([0., 1.]).to(device)
+      t_points = Tensor(torch.arange(0, 1, 1/self.output_dim, dtype=torch.float32)).to(device)
 
       total_estimated_CHF = []
       total_estimated_hazard = []
@@ -96,7 +95,7 @@ class CompetingRisks(nn.Module):
         #apply odeint adjoint to each cause-specific N-ODE
 
         estimated_CHF = odeint(rescaled_ode, initial, t_points, method='dopri5', rtol=1e-3,
-                              atol=1e-3, adjoint_options=dict(norm="seminorm")).to(device)
+                               atol=1e-3, adjoint_options=dict(norm="seminorm")).to(device)
 
         t_reciprocal = torch.where(t_eval != 0, torch.reciprocal(t_eval), 0.0)
 
@@ -105,11 +104,17 @@ class CompetingRisks(nn.Module):
         estimated_CHF = torch.transpose(estimated_CHF, 0 ,1)
         estimated_hazard = torch.transpose(estimated_hazard, 0 ,1)
 
+
         total_estimated_CHF.append(estimated_CHF)
         total_estimated_hazard.append(estimated_hazard)
 
       total_estimated_CHF = torch.stack(total_estimated_CHF,dim=0).to(device)
+
       total_estimated_hazard = torch.stack(total_estimated_hazard,dim=0).to(device)
+
+      total_estimated_CHF = torch.squeeze(total_estimated_CHF, -1)
+      total_estimated_hazard = torch.squeeze(total_estimated_hazard, -1)
+
 
       return (total_estimated_hazard, total_estimated_CHF)
 
