@@ -53,8 +53,6 @@ def main():
     timeseries_val = df_processed.loc[val_ids]
     timeseries_test = df_processed.loc[test_ids]
 
-    print(timeseries_train.info())
-
     # Mean imputation using training set 
     timeseries_train['serChol'] = timeseries_train['serChol'].fillna(timeseries_train['serChol'].mean())
     timeseries_val['serChol'] = timeseries_val['serChol'].fillna(timeseries_train['serChol'].mean())
@@ -65,9 +63,6 @@ def main():
                         'SGOT', 'platelets', 'prothrombin', 'histologic']
 
     cols_leave = ['drug', 'sex', 'ascites', 'hepatomegaly', 'spiders']
-
-    feat_list = cols_standardize + cols_leave
-
 
 
     df_train = transform(timeseries_train)
