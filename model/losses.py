@@ -3,6 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch import Tensor
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 class _Loss(torch.nn.Module):
     def __init__(self, reduction: str = 'mean') -> None:
         super().__init__()
@@ -112,10 +114,24 @@ class NLLLoss(_Loss):
     def forward(self, out, events) -> Tensor:
         return nll_loss(out, events, self.reduction)
 
+
 class NLLLogistiHazardLoss(_Loss):
     def forward(self, phi: Tensor, idx_durations: Tensor, events: Tensor) -> Tensor:
         return nll_logistic_hazard(phi, idx_durations, events, self.reduction, self.training)
-    
+
+def ranking_loss(cif_total, t, e):
+  loss = 0
+  for k, cifk in enumerate(cif_total):
+      for ci, ti in zip(cifk[e-1 == k], t[e-1 == k]):
+          if torch.sum(t > ti - 1) > 0:
+              loss += torch.mean(torch.sigmoid((cifk[t > ti - 1][torch.arange((t > ti - 1).sum()), ti - 1] - ci[ti - 1])))
+              # selects patients that have survived longer than ti and gets their CIF
+  return loss
+
+
+class RankingLoss(_Loss):
+    def forward(self, cif_total, t, e) -> Tensor:
+        return ranking_loss(cif_total, t, e)
 
 class Loss(nn.Module):
     def __init__(self, alpha: list):

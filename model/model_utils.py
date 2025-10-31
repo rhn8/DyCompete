@@ -46,11 +46,7 @@ class CompetingRisk(nn.Module):
 
 
         self.relu = nn.ReLU()
-        self.tanh = nn.Tanh()
-        self.softmax = nn.Softmax()
         self.dropout = nn.Dropout(dropout)
-        self.gelu = nn.GELU()
-        #add softplus here
 
 #want to put in latent space as input- then use constraints of ODE
     def forward(self, t, state, z):
@@ -86,7 +82,7 @@ class CompetingRisks(nn.Module):
                                               for risk in range(self.risks)])        
 
     def forward(self, z, t_eval):
-      initial = torch.zeros(z.shape[0],1, device=z.device)
+      initial = torch.zeros(z.shape[0], 1, device=z.device)
 
       t_points = Tensor([0., 1.]).to(device)
 
@@ -100,7 +96,7 @@ class CompetingRisks(nn.Module):
         #apply odeint adjoint to each cause-specific N-ODE
 
         estimated_CHF = odeint(rescaled_ode, initial, t_points, method='dopri5', rtol=1e-3,
-                               atol=1e-3, adjoint_options=dict(norm="seminorm")).to(device)
+                              atol=1e-3, adjoint_options=dict(norm="seminorm")).to(device)
 
         t_reciprocal = torch.where(t_eval != 0, torch.reciprocal(t_eval), 0.0)
 
@@ -116,7 +112,7 @@ class CompetingRisks(nn.Module):
       total_estimated_hazard = torch.stack(total_estimated_hazard,dim=0).to(device)
 
       return (total_estimated_hazard, total_estimated_CHF)
-    
+
 
 
 
@@ -138,7 +134,7 @@ class Decoder(nn.Module):
         x = self.fc3(x)
         out = self.fc4(x)
         return out
-    
+
 
 class DyCompete(nn.Module):
     def __init__(self, in_features, encoded_features, out_features, risks=1):

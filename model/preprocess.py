@@ -22,6 +22,9 @@ def process_patient(patient_data):
     return padded_data.ffill()
 
 def process(timeseries):
+    for col in timeseries:
+        timeseries[col] = timeseries.groupby('id')[col].transform(conditional_fill)
+
     processed_df = timeseries.groupby('id').apply(process_patient)
 
     return processed_df
